@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  api_gateway:
+    build:
+      context: .
+      dockerfile: api_gateway/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+
+  auth_service:
+    build:
+      context: .
+      dockerfile: auth_service/Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+
+  analysis_service:
+    build:
+      context: .
+      dockerfile: analysis_service/Dockerfile
+    ports:
+      - "8002:8002"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+
+  tool_registry:
+    build:
+      context: .
+      dockerfile: tool_registry/Dockerfile
+    ports:
+      - "8003:8003"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+
+  tool_executor:
+    build:
+      context: .
+      dockerfile: tool_executor/Dockerfile
+    ports:
+      - "8004:8004"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - TOOL_REGISTRY_URL=${TOOL_REGISTRY_URL}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - tool_registry
