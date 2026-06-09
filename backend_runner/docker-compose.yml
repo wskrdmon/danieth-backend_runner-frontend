@@ -43,6 +43,38 @@ services:
     environment:
       - DATABASE_URL=${DATABASE_URL}
 
+  tool_sqlmap:
+    build:
+      context: tools/sqlmap
+      dockerfile: Dockerfile
+    image: backend_runner-sqlmap
+    profiles:
+      - tools
+
+  tool_nmap:
+    build:
+      context: tools/nmap
+      dockerfile: Dockerfile
+    image: backend_runner-nmap
+    profiles:
+      - tools
+
+  tool_nuclei:
+    build:
+      context: tools/nuclei
+      dockerfile: Dockerfile
+    image: backend_runner-nuclei
+    profiles:
+      - tools
+
+  tool_xsstrike:
+    build:
+      context: tools/xsstrike
+      dockerfile: Dockerfile
+    image: backend_runner-xsstrike
+    profiles:
+      - tools
+
   tool_executor:
     build:
       context: .

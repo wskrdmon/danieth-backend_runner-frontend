@@ -16,6 +16,7 @@ def main():
     dbms = params.get("dbms", "")
     tecnica = params.get("tecnica", "")
     time_sec = params.get("time_sec", 10)
+    cookies = params.get("cookies", "")
 
     cmd = [
         "python", "/sqlmap/sqlmap.py",
@@ -39,6 +40,8 @@ def main():
         cmd.extend(["--dbms", dbms])
     if tecnica:
         cmd.extend(["--technique", tecnica])
+    if cookies:
+        cmd.extend(["--cookie", cookies])
 
     resultado = subprocess.run(cmd, capture_output=True, text=True, timeout=800)
 
