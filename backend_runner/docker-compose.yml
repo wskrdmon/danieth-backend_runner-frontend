@@ -62,6 +62,22 @@ services:
     depends_on:
       - redis
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8003/')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  seeder:
+    build:
+      context: .
+      dockerfile: scripts/Dockerfile.seeder
+    container_name: runner-seeder
+    depends_on:
+      tool_registry:
+        condition: service_healthy
+    restart: "no"
 
   tool_executor:
     build:
