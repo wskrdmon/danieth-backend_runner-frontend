@@ -16,6 +16,11 @@ export async function ejecutarHerramienta(payload: {
 }
 
 export async function obtenerTarea(tareaId: number) {
-  const { data } = await apiClient.get(`/proxy/ejecutar/tareas/${tareaId}`);
+  const { data } = await apiClient.get(`/proxy/tareas/${tareaId}`);
+  return data;
+}
+
+export async function listarTareas(limite = 20) {
+  const { data } = await apiClient.get(`/proxy/tareas`, { params: { limite } });
   return data;
 }
