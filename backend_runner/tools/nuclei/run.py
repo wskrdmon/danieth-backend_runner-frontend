@@ -11,14 +11,14 @@ def main():
     severidad = params.get("severidad", [])
     rate_limit = params.get("rate_limit", 150)
 
-    cmd = ["nuclei", "-u", objetivo, "-rate-limit", str(rate_limit), "-j", "-silent"]
+    cmd = ["nuclei", "-u", objetivo, "-rate-limit", str(rate_limit), "-j", "-silent", "-timeout", "10", "-max-host-error", "3"]
     if templates:
         for t in templates:
             cmd.extend(["-t", t])
     if severidad:
         cmd.extend(["-severity", ",".join(severidad)])
 
-    resultado = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+    resultado = subprocess.run(cmd, capture_output=True, text=True, timeout=800)
 
     vulnerabilidades = []
     for linea in resultado.stdout.strip().splitlines():
@@ -42,7 +42,7 @@ def main():
             resumen[sev] += 1
 
     error_msg = None
-    if resultado.returncode != 0:
+    if resultado.returncode != 0 or (not vulnerabilidades and resultado.stderr.strip()):
         error_msg = resultado.stderr.strip() or resultado.stdout.strip() or "nuclei exit code " + str(resultado.returncode)
 
     output = {

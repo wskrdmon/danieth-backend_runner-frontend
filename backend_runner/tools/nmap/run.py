@@ -25,6 +25,7 @@ def parsear_xml(xml_str):
                     hostname = hn.get("name", "")
 
             puertos_abiertos = []
+            total_filtrados = 0
             ports_el = host.find("ports")
             if ports_el is not None:
                 for port in ports_el.findall("port"):
