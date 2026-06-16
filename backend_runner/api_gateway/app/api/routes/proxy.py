@@ -19,6 +19,24 @@ async def listar_herramientas():
         return r.json()
 
 
+@router.get("/herramientas/{nombre}/versiones/fallback")
+async def obtener_fallback(nombre: str):
+    async with httpx.AsyncClient() as client:
+        r = await client.get(f"{TOOL_REGISTRY_URL}/herramientas/{nombre}/versiones/fallback")
+        if r.status_code != 200:
+            raise HTTPException(status_code=r.status_code, detail=r.text)
+        return r.json()
+
+
+@router.get("/herramientas/{nombre}/versiones")
+async def listar_versiones(nombre: str):
+    async with httpx.AsyncClient() as client:
+        r = await client.get(f"{TOOL_REGISTRY_URL}/herramientas/{nombre}/versiones")
+        if r.status_code != 200:
+            raise HTTPException(status_code=r.status_code, detail=r.text)
+        return r.json()
+
+
 @router.get("/herramientas/para-orquestador")
 async def listar_herramientas_orquestador():
     async with httpx.AsyncClient() as client:
@@ -59,24 +77,6 @@ async def actualizar_herramienta(nombre: str, request: Request):
 
 # ─── VERSIONES ───────────────────────────────────────────────────────────────
 
-@router.get("/herramientas/{nombre}/versiones")
-async def listar_versiones(nombre: str):
-    async with httpx.AsyncClient() as client:
-        r = await client.get(f"{TOOL_REGISTRY_URL}/herramientas/{nombre}/versiones")
-        if r.status_code != 200:
-            raise HTTPException(status_code=r.status_code, detail=r.text)
-        return r.json()
-
-
-@router.get("/herramientas/{nombre}/versiones/fallback")
-async def obtener_fallback(nombre: str):
-    async with httpx.AsyncClient() as client:
-        r = await client.get(f"{TOOL_REGISTRY_URL}/herramientas/{nombre}/versiones/fallback")
-        if r.status_code != 200:
-            raise HTTPException(status_code=r.status_code, detail=r.text)
-        return r.json()
-
-
 @router.post("/herramientas/{nombre}/versiones")
 async def agregar_version(nombre: str, request: Request):
     body = await request.json()
@@ -107,19 +107,19 @@ async def marcar_version_fallida(nombre: str, version: str):
 
 # ─── TAREAS / EXECUTOR ───────────────────────────────────────────────────────
 
-@router.get("/tareas")
-async def listar_tareas(limite: int = 20):
+@router.get("/tareas/{tarea_id}")
+async def obtener_tarea(tarea_id: int):
     async with httpx.AsyncClient() as client:
-        r = await client.get(f"{TOOL_EXECUTOR_URL}/ejecutar/tareas", params={"limite": limite})
+        r = await client.get(f"{TOOL_EXECUTOR_URL}/ejecutar/tareas/{tarea_id}")
         if r.status_code != 200:
             raise HTTPException(status_code=r.status_code, detail=r.text)
         return r.json()
 
 
-@router.get("/tareas/{tarea_id}")
-async def obtener_tarea(tarea_id: int):
+@router.get("/tareas")
+async def listar_tareas(limite: int = 20):
     async with httpx.AsyncClient() as client:
-        r = await client.get(f"{TOOL_EXECUTOR_URL}/ejecutar/tareas/{tarea_id}")
+        r = await client.get(f"{TOOL_EXECUTOR_URL}/ejecutar/tareas", params={"limite": limite})
         if r.status_code != 200:
             raise HTTPException(status_code=r.status_code, detail=r.text)
         return r.json()
@@ -137,13 +137,21 @@ async def ejecutar_herramienta(request: Request):
                     f"{API_GATEWAY_URL}/objetivos/",
                     json={"usuario_id": 1, "url_objetivo": "http://target.local"}
                 )
+                if r_obj.status_code not in (200, 201):
+                    raise HTTPException(status_code=502, detail=f"Error creando objetivo: {r_obj.text}")
                 objetivo_id = r_obj.json().get("objetivo_id")
+                if not objetivo_id:
+                    raise HTTPException(status_code=502, detail="No se pudo obtener objetivo_id")
 
                 r_ses = await client.post(
                     f"{API_GATEWAY_URL}/sesiones/",
                     json={"objetivo_id": objetivo_id}
                 )
+                if r_ses.status_code not in (200, 201):
+                    raise HTTPException(status_code=502, detail=f"Error creando sesión: {r_ses.text}")
                 sesion_id = r_ses.json().get("sesion_id")
+                if not sesion_id:
+                    raise HTTPException(status_code=502, detail="No se pudo obtener sesion_id")
 
             payload = {
                 "herramienta": body.get("herramienta"),
