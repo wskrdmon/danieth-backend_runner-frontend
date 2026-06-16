@@ -8,10 +8,118 @@ TOOL_EXECUTOR_URL = "http://tool_executor:8004"
 API_GATEWAY_URL = "http://api_gateway:8000"
 
 
+# ─── HERRAMIENTAS ────────────────────────────────────────────────────────────
+
 @router.get("/herramientas")
 async def listar_herramientas():
     async with httpx.AsyncClient() as client:
         r = await client.get(f"{TOOL_REGISTRY_URL}/herramientas/")
+        if r.status_code != 200:
+            raise HTTPException(status_code=r.status_code, detail=r.text)
+        return r.json()
+
+
+@router.get("/herramientas/para-orquestador")
+async def listar_herramientas_orquestador():
+    async with httpx.AsyncClient() as client:
+        r = await client.get(f"{TOOL_REGISTRY_URL}/herramientas/para-orquestador")
+        if r.status_code != 200:
+            raise HTTPException(status_code=r.status_code, detail=r.text)
+        return r.json()
+
+
+@router.get("/herramientas/{nombre}")
+async def obtener_herramienta(nombre: str):
+    async with httpx.AsyncClient() as client:
+        r = await client.get(f"{TOOL_REGISTRY_URL}/herramientas/{nombre}")
+        if r.status_code != 200:
+            raise HTTPException(status_code=r.status_code, detail=r.text)
+        return r.json()
+
+
+@router.post("/herramientas")
+async def crear_herramienta(request: Request):
+    body = await request.json()
+    async with httpx.AsyncClient() as client:
+        r = await client.post(f"{TOOL_REGISTRY_URL}/herramientas/", json=body)
+        if r.status_code not in (200, 201):
+            raise HTTPException(status_code=r.status_code, detail=r.text)
+        return r.json()
+
+
+@router.put("/herramientas/{nombre}")
+async def actualizar_herramienta(nombre: str, request: Request):
+    body = await request.json()
+    async with httpx.AsyncClient() as client:
+        r = await client.put(f"{TOOL_REGISTRY_URL}/herramientas/{nombre}", json=body)
+        if r.status_code != 200:
+            raise HTTPException(status_code=r.status_code, detail=r.text)
+        return r.json()
+
+
+# ─── VERSIONES ───────────────────────────────────────────────────────────────
+
+@router.get("/herramientas/{nombre}/versiones")
+async def listar_versiones(nombre: str):
+    async with httpx.AsyncClient() as client:
+        r = await client.get(f"{TOOL_REGISTRY_URL}/herramientas/{nombre}/versiones")
+        if r.status_code != 200:
+            raise HTTPException(status_code=r.status_code, detail=r.text)
+        return r.json()
+
+
+@router.get("/herramientas/{nombre}/versiones/fallback")
+async def obtener_fallback(nombre: str):
+    async with httpx.AsyncClient() as client:
+        r = await client.get(f"{TOOL_REGISTRY_URL}/herramientas/{nombre}/versiones/fallback")
+        if r.status_code != 200:
+            raise HTTPException(status_code=r.status_code, detail=r.text)
+        return r.json()
+
+
+@router.post("/herramientas/{nombre}/versiones")
+async def agregar_version(nombre: str, request: Request):
+    body = await request.json()
+    async with httpx.AsyncClient() as client:
+        r = await client.post(f"{TOOL_REGISTRY_URL}/herramientas/{nombre}/versiones", json=body)
+        if r.status_code not in (200, 201):
+            raise HTTPException(status_code=r.status_code, detail=r.text)
+        return r.json()
+
+
+@router.put("/herramientas/{nombre}/versiones/{version}/activar")
+async def activar_version(nombre: str, version: str):
+    async with httpx.AsyncClient() as client:
+        r = await client.put(f"{TOOL_REGISTRY_URL}/herramientas/{nombre}/versiones/{version}/activar")
+        if r.status_code != 200:
+            raise HTTPException(status_code=r.status_code, detail=r.text)
+        return r.json()
+
+
+@router.put("/herramientas/{nombre}/versiones/{version}/marcar-fallida")
+async def marcar_version_fallida(nombre: str, version: str):
+    async with httpx.AsyncClient() as client:
+        r = await client.put(f"{TOOL_REGISTRY_URL}/herramientas/{nombre}/versiones/{version}/marcar-fallida")
+        if r.status_code != 200:
+            raise HTTPException(status_code=r.status_code, detail=r.text)
+        return r.json()
+
+
+# ─── TAREAS / EXECUTOR ───────────────────────────────────────────────────────
+
+@router.get("/tareas")
+async def listar_tareas(limite: int = 20):
+    async with httpx.AsyncClient() as client:
+        r = await client.get(f"{TOOL_EXECUTOR_URL}/ejecutar/tareas", params={"limite": limite})
+        if r.status_code != 200:
+            raise HTTPException(status_code=r.status_code, detail=r.text)
+        return r.json()
+
+
+@router.get("/tareas/{tarea_id}")
+async def obtener_tarea(tarea_id: int):
+    async with httpx.AsyncClient() as client:
+        r = await client.get(f"{TOOL_EXECUTOR_URL}/ejecutar/tareas/{tarea_id}")
         if r.status_code != 200:
             raise HTTPException(status_code=r.status_code, detail=r.text)
         return r.json()
@@ -25,23 +133,16 @@ async def ejecutar_herramienta(request: Request):
     try:
         async with httpx.AsyncClient(timeout=60) as client:
             if not sesion_id:
-                # Crear objetivo automático
                 r_obj = await client.post(
                     f"{API_GATEWAY_URL}/objetivos/",
-                    json={
-                        "usuario_id": 1,
-                        "url_objetivo": "http://target.local"
-                    }
+                    json={"usuario_id": 1, "url_objetivo": "http://target.local"}
                 )
-                print(f"Objetivo creado: {r_obj.status_code} {r_obj.text}")
                 objetivo_id = r_obj.json().get("objetivo_id")
 
-                # Crear sesión automática
                 r_ses = await client.post(
                     f"{API_GATEWAY_URL}/sesiones/",
                     json={"objetivo_id": objetivo_id}
                 )
-                print(f"Sesión creada: {r_ses.status_code} {r_ses.text}")
                 sesion_id = r_ses.json().get("sesion_id")
 
             payload = {
@@ -50,22 +151,12 @@ async def ejecutar_herramienta(request: Request):
                 "sesion_id": sesion_id,
                 "orden_ejecucion": body.get("orden_ejecucion", 1),
             }
-            print(f"Enviando a tool_executor: {payload}")
 
             r = await client.post(f"{TOOL_EXECUTOR_URL}/ejecutar/", json=payload)
-            print(f"tool_executor respondió: {r.status_code} {r.text}")
             if r.status_code != 200:
                 raise HTTPException(status_code=r.status_code, detail=r.text)
             return r.json()
-    except Exception as e:
-        print(f"ERROR EN PROXY EJECUTAR: {e}")
+    except HTTPException:
         raise
-
-
-@router.get("/ejecutar/tareas/{tarea_id}")
-async def obtener_tarea(tarea_id: int):
-    async with httpx.AsyncClient() as client:
-        r = await client.get(f"{TOOL_EXECUTOR_URL}/ejecutar/tareas/{tarea_id}")
-        if r.status_code != 200:
-            raise HTTPException(status_code=r.status_code, detail=r.text)
-        return r.json()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
