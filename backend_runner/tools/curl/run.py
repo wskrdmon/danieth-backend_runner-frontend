@@ -21,7 +21,8 @@ def main():
         cmd.extend(["-d", data])
 
     if flags_extra:
-        cmd.extend(flags_extra.split())
+        import shlex
+        cmd.extend(shlex.split(flags_extra))
 
     cmd.append(url)
 

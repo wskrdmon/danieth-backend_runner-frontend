@@ -9,11 +9,16 @@ def main():
     ruta = params.get("ruta", ".")
     flags = params.get("flags", "-la")
 
-    cmd = ["ls"] + flags.split() + [ruta]
+    import shlex
+    cmd = ["ls"] + shlex.split(flags) + [ruta]
 
     resultado = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
 
     lineas = resultado.stdout.strip().splitlines() if resultado.stdout else []
+
+    error = None
+    if resultado.returncode != 0:
+        error = resultado.stderr.strip() or f"No se pudo listar '{ruta}'"
 
     output = {
         "ruta": ruta,
@@ -23,7 +28,7 @@ def main():
             "raw": resultado.stdout
         },
         "codigo_salida": resultado.returncode,
-        "error": resultado.stderr if resultado.returncode != 0 else None
+        "error": error
     }
 
     print(json.dumps(output))
