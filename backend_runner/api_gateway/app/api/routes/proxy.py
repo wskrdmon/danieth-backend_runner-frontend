@@ -3,9 +3,9 @@ from fastapi import APIRouter, HTTPException, Request
 
 router = APIRouter(prefix="/proxy", tags=["Proxy"])
 
-TOOL_REGISTRY_URL = "http://localhost:8003"
-TOOL_EXECUTOR_URL = "http://localhost:8004"
-API_GATEWAY_URL = "http://localhost:8000"
+TOOL_REGISTRY_URL = "http://tool_registry:8003"
+TOOL_EXECUTOR_URL = "http://tool_executor:8004"
+API_GATEWAY_URL = "http://api_gateway:8000"
 
 
 @router.get("/herramientas")
