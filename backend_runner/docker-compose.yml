@@ -124,3 +124,44 @@ services:
     image: backend_runner-xsstrike
     container_name: runner-tool-xsstrike-builder
     entrypoint: ["echo", "imagen lista"]
+
+  tool_gobuster:
+    build:
+      context: tools/gobuster
+      dockerfile: Dockerfile
+    image: backend_runner-gobuster
+    container_name: runner-tool-gobuster-builder
+    entrypoint: ["echo", "imagen lista"]
+
+  tool_nikto:
+    build:
+      context: tools/nikto
+      dockerfile: Dockerfile
+    image: backend_runner-nikto
+    container_name: runner-tool-nikto-builder
+    entrypoint: ["echo", "imagen lista"]
+
+  tool_hydra:
+    build:
+      context: tools/hydra
+      dockerfile: Dockerfile
+    image: backend_runner-hydra
+    container_name: runner-tool-hydra-builder
+    entrypoint: ["echo", "imagen lista"]
+
+  tool_radare2:
+    build:
+      context: tools/radare2
+      dockerfile: Dockerfile
+    image: backend_runner-radare2
+    container_name: runner-tool-radare2-builder
+    entrypoint: ["echo", "imagen lista"]
+
+  
+  tool_osquery:
+    build:
+      context: tools/osquery
+      dockerfile: Dockerfile
+    image: backend_runner-osquery
+    container_name: runner-tool-osquery-builder
+    entrypoint: ["echo", "imagen lista"]
