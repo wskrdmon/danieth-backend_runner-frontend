@@ -1,71 +1,219 @@
-# Backend Runner
+# Guía de Integración de Herramientas - Dani-ETH Backend Runner
 
-## Requisitos
+Este documento detalla la arquitectura y el flujo de trabajo estandarizado para integrar nuevas herramientas de ciberseguridad, como herramientas de pentesting, fuerza bruta, ingeniería inversa, entre otras, en el Orquestador `tool_executor` de Dani-ETH.
 
-- Docker Desktop corriendo
-- Archivo `.env` en esta carpeta
+---
 
-## Configuración inicial
+## 🏗️ 1. Arquitectura Base ("Con peras y manzanas")
 
-Crea el archivo `.env` en `backend_runner/` con estas variables:
+Cada herramienta en nuestro ecosistema funciona como una "caja negra" independiente. El ciclo de vida de una herramienta es el siguiente:
 
-```env
-DATABASE_URL=postgresql+asyncpg://usuario:password@host:5432/nombre_db
-TOOL_REGISTRY_URL=http://tool_registry:8003
+1. API `FastAPI` recibe una orden de escaneo.
+2. Orquestador levanta un contenedor Docker efímero con la herramienta.
+3. El contenedor ejecuta un script `run.py` que recibe parámetros en JSON, dispara el comando real de la herramienta, captura la consola y la traduce de vuelta a JSON.
+4. El resultado se guarda en la base de datos y el contenedor se destruye inmediatamente.
+
+La estructura de carpetas para una nueva herramienta debe verse así:
+
+```plaintext id="f2rhm5"
+backend_runner/
+├── docker-compose.yml
+└── tools/
+    └── nombre_herramienta/
+        ├── Dockerfile
+        └── run.py
 ```
 
-## Levantar el sistema
+---
 
-```powershell
-cd backend_runner
-docker compose up --build -d
+## 🛠️ 2. El Dockerfile (El Entorno)
+
+Utilizamos imágenes base ligeras, como `debian-slim`, o imágenes que ya contienen las herramientas en sus repositorios nativos, como `kalilinux/kali-rolling`, para optimizar el almacenamiento y el caché.
+
+Plantilla estándar:
+
+```dockerfile id="dls3m1"
+# Usar la imagen base adecuada (Kali suele tener todas las herramientas)
+FROM kalilinux/kali-rolling
+
+# Actualizar e instalar python3 y la herramienta específica
+RUN apt-get update && \
+    apt-get install -y python3 nombre_de_la_herramienta && \
+    rm -rf /var/lib/apt/lists/* # LÍNEA VITAL para ahorrar espacio en disco
+
+WORKDIR /app
+COPY run.py /app/run.py
+
+# IMPORTANTE: Usar ENTRYPOINT y no CMD para evitar el error "OCI runtime create failed"
+# al pasarle el JSON de configuración desde el orquestador.
+ENTRYPOINT ["python3", "/app/run.py"]
 ```
 
-## Registrar herramientas en la BDD
+---
 
-El seeder corre automáticamente al levantar. Si necesitas volver a correrlo manualmente:
+## 🐍 3. El run.py (El Traductor a JSON)
 
-```powershell
-docker compose run --rm seeder
+Este script es el puente entre el mundo del texto plano, la consola, y la API REST, JSON.
+
+Plantilla estándar:
+
+```python id="svw42a"
+import sys
+import json
+import subprocess
+
+def main():
+    try:
+        # 1. Leer inputs desde los argumentos del Orquestador (Parche OCI)
+        if len(sys.argv) > 1:
+            input_data = sys.argv[1]
+        else:
+            input_data = sys.stdin.read()
+            
+        params = json.loads(input_data)
+        
+        # 2. Extraer parámetros (Ejemplo)
+        objetivo = params.get("objetivo", "127.0.0.1")
+
+        # 3. Armar y ejecutar el comando
+        comando = ["herramienta", "-parametro", objetivo]
+        proceso = subprocess.run(comando, capture_output=True, text=True)
+
+        # 4. Procesar la salida (Regex, JSON nativo, etc.)
+        # ... lógica de parseo aquí ...
+
+        # 5. Estructurar el JSON de salida estándar para Dani-ETH
+        resultado = {
+            "objetivo_escaneado": objetivo,
+            "total_hallazgos": 0, # Reemplazar con variable real
+            "raw_output": proceso.stdout + proceso.stderr
+        }
+
+        print(json.dumps({
+            "error": None,
+            "resultado": resultado,
+            "codigo_salida": proceso.returncode
+        }))
+
+    except Exception as e:
+        print(json.dumps({
+            "error": str(e),
+            "resultado": None,
+            "codigo_salida": 1
+        }))
+
+if __name__ == "__main__":
+    main()
 ```
 
-## Servicios disponibles
+---
 
-| Servicio       | URL                              |
-|----------------|----------------------------------|
-| api_gateway    | http://localhost:8002/docs       |
-| tool_registry  | http://localhost:8003/docs       |
-| tool_executor  | http://localhost:8004/docs       |
+## 🐳 4. Integración en docker-compose.yml
 
-## Herramientas registradas
+Para que el orquestador sepa que la herramienta existe, debe registrarse como un servicio "builder" en el Compose.
 
-| Nombre    | Descripcion                                      |
-|-----------|--------------------------------------------------|
-| nmap      | Escaner de puertos y deteccion de servicios      |
-| sqlmap    | Deteccion y explotacion de inyecciones SQL       |
-| nuclei    | Escaner de vulnerabilidades basado en templates  |
-| xsstrike  | Deteccion de vulnerabilidades XSS                |
-| curl      | Realiza peticiones HTTP/HTTPS                    |
-| ls        | Lista archivos y directorios                     |
-| cat       | Muestra el contenido de un archivo               |
-
-## Ver logs
-
-```powershell
-docker logs runner-seeder
-docker logs runner-tool-registry
-docker logs runner-tool-executor
-docker logs runner-api-gateway
+```yaml id="cx1z5n"
+tool_nuevaherramienta:
+  build:
+    context: tools/nuevaherramienta
+    dockerfile: Dockerfile
+  image: backend_runner-nuevaherramienta
+  container_name: runner-tool-nuevaherramienta-builder
+  entrypoint: ["echo", "imagen lista"]
 ```
 
-## Bajar el sistema
+Asegúrate de respetar la indentación vertical estricta del YAML para evitar errores de parseo.
 
-```powershell
-docker compose down
+---
+
+## 💻 5. Comandos de Terminal Clave
+
+### Construcción y Despliegue
+
+Construir una herramienta específica:
+
+```bash id="xi2qiy"
+docker compose build tool_nuevaherramienta
 ```
 
-Para bajar y eliminar la BDD (reset completo):
+Levantar toda la infraestructura base:
 
-```powershell
-docker compose down --volumes
+```bash id="lhyh6h"
+docker compose up -d
 ```
+
+### Mantenimiento y Limpieza (Liberar Espacio)
+
+Borrar imágenes huérfanas, como intentos fallidos de build:
+
+```bash id="5yi7be"
+docker image prune
+```
+
+Limpieza profunda y segura de imágenes viejas, respetando los contenedores activos:
+
+```bash id="5huws3"
+docker image prune -a --filter "until=24h"
+```
+
+Ver logs en tiempo real del Orquestador:
+
+```bash id="7w7mo4"
+docker logs -f runner-tool-executor
+```
+
+---
+
+## 🚀 6. Registro en FastAPI y Base de Datos
+
+Una vez que la imagen Docker está construida, la herramienta debe registrarse en la plataforma para que el Frontend pueda consumirla.
+
+### A. Registrar la Herramienta (Swagger: POST /herramientas/)
+
+Se debe enviar un esquema con la definición completa.
+
+Ejemplo:
+
+```json id="ek86b5"
+{
+  "nombre": "nombre_herramienta",
+  "nombre_UI": "Nombre Amigable UI",
+  "descripcion": "Descripción de lo que hace.",
+  "casos_usos": ["caso 1", "caso 2"],
+  "categoria": "categoria correspondiente",
+  "esquema_input": {
+    "objetivo": {
+      "tipo": "string",
+      "requerido": true,
+      "descripcion": "IP o Dominio"
+    }
+  },
+  "esquema_output": {
+    "total_hallazgos": {
+      "tipo": "integer"
+    }
+  },
+  "version_inicial": "1.0",
+  "docker_imagen": "backend_runner-nuevaherramienta",
+  "notas_version": "Primera integración"
+}
+```
+
+Nota: Tras esto, asociar manualmente el ID generado en la tabla `versiones_herramientas` en Supabase.
+
+### B. Ejecutar una Prueba (Swagger: POST /ejecutar/)
+
+Para validar el pipeline completo:
+
+```json id="6py28k"
+{
+  "herramienta": "nombre_herramienta",
+  "params": {
+    "objetivo": "127.0.0.1"
+  },
+  "sesion_id": 61,
+  "orden_ejecucion": 1
+}
+```
+
+El resultado JSON validado se guardará en la tabla de ejecuciones de Supabase.
