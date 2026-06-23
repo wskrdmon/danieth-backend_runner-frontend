@@ -11,6 +11,7 @@
     "delete": "Eliminar",
     "edit": "Editar",
     "search": "Buscar",
+    "retry": "Reintentar",
     "comingSoon": "Próximamente",
     "comingSoonDescription": "Esta sección está en desarrollo. La construiremos en los próximos sprints."
   },
