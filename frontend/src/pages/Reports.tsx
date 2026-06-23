@@ -1,7 +1,71 @@
 import { useEffect, useState } from 'react';
+import type { ComponentProps } from 'react';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { listarReportes, obtenerReporte, ReporteResumen, ReporteCompleto } from '../lib/orquestador';
+
+// El orquestador (LLM) suele envolver todo el reporte en un fence ```markdown ... ```.
+// Si el contenido entero es un único bloque de código, lo desenvolvemos para que
+// react-markdown parsee el markdown real en vez de mostrarlo crudo.
+function limpiarMarkdown(contenido: string): string {
+  const texto = contenido.trim();
+  const fence = texto.match(/^```[a-zA-Z]*\n([\s\S]*?)\n```$/);
+  return fence ? fence[1] : contenido;
+}
+
+// Mapeo de elementos markdown a estilos con las variables CSS del tema
+// (Tailwind resetea h1/h2/tablas y el proyecto no tiene el plugin Typography).
+const markdownComponents = {
+  h1: (props: ComponentProps<'h1'>) => (
+    <h1 className="text-2xl font-bold mt-6 mb-3 pb-2 border-b" style={{ color: 'var(--text-primary)', borderColor: 'var(--border-primary)' }} {...props} />
+  ),
+  h2: (props: ComponentProps<'h2'>) => (
+    <h2 className="text-xl font-bold mt-6 mb-3" style={{ color: 'var(--text-primary)' }} {...props} />
+  ),
+  h3: (props: ComponentProps<'h3'>) => (
+    <h3 className="text-lg font-bold mt-4 mb-2" style={{ color: 'var(--accent-cyan)' }} {...props} />
+  ),
+  p: (props: ComponentProps<'p'>) => (
+    <p className="my-3" style={{ color: 'var(--text-secondary)' }} {...props} />
+  ),
+  ul: (props: ComponentProps<'ul'>) => (
+    <ul className="list-disc pl-6 my-3 space-y-1" style={{ color: 'var(--text-secondary)' }} {...props} />
+  ),
+  ol: (props: ComponentProps<'ol'>) => (
+    <ol className="list-decimal pl-6 my-3 space-y-1" style={{ color: 'var(--text-secondary)' }} {...props} />
+  ),
+  li: (props: ComponentProps<'li'>) => <li className="leading-relaxed" {...props} />,
+  a: (props: ComponentProps<'a'>) => (
+    <a className="underline hover:opacity-80" style={{ color: 'var(--accent-cyan)' }} target="_blank" rel="noreferrer" {...props} />
+  ),
+  strong: (props: ComponentProps<'strong'>) => (
+    <strong className="font-bold" style={{ color: 'var(--text-primary)' }} {...props} />
+  ),
+  blockquote: (props: ComponentProps<'blockquote'>) => (
+    <blockquote className="border-l-4 pl-4 my-3 italic" style={{ borderColor: 'var(--accent-cyan)', color: 'var(--text-muted)' }} {...props} />
+  ),
+  code: (props: ComponentProps<'code'>) => (
+    <code className="px-1.5 py-0.5 rounded text-sm font-mono" style={{ background: 'var(--bg-tertiary)', color: 'var(--accent-cyan)' }} {...props} />
+  ),
+  pre: (props: ComponentProps<'pre'>) => (
+    <pre className="p-4 rounded-lg my-3 overflow-x-auto text-sm font-mono" style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-primary)' }} {...props} />
+  ),
+  table: (props: ComponentProps<'table'>) => (
+    <div className="overflow-x-auto my-4">
+      <table className="w-full text-sm border-collapse" style={{ color: 'var(--text-secondary)' }} {...props} />
+    </div>
+  ),
+  th: (props: ComponentProps<'th'>) => (
+    <th className="text-left px-3 py-2 font-bold border" style={{ color: 'var(--text-primary)', borderColor: 'var(--border-primary)', background: 'var(--bg-tertiary)' }} {...props} />
+  ),
+  td: (props: ComponentProps<'td'>) => (
+    <td className="px-3 py-2 border" style={{ borderColor: 'var(--border-primary)' }} {...props} />
+  ),
+  hr: (props: ComponentProps<'hr'>) => (
+    <hr className="my-4" style={{ borderColor: 'var(--border-primary)' }} {...props} />
+  ),
+};
 
 export default function ReportsPage() {
   const { t } = useTranslation();
@@ -134,8 +198,8 @@ export default function ReportsPage() {
         ) : (
           <div className="p-6 rounded-xl border border-[--border-primary] bg-[--bg-secondary]" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}>
             <div style={{ color: 'var(--text-secondary)', lineHeight: '1.7' }}>
-              <ReactMarkdown>
-                {reporteSeleccionado.contenido}
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                {limpiarMarkdown(reporteSeleccionado.contenido)}
               </ReactMarkdown>
             </div>
           </div>
