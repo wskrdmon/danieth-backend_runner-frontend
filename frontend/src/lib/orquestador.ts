@@ -4,13 +4,52 @@ import { apiClient } from './api';
 // TIPOS
 // ============================================================================
 
+export type Modo =
+  | 'solo_reconocimiento'
+  | 'reconocimiento_vulnerabilidades'
+  | 'reconocimiento_explotacion';
+
+export type Profundidad = 'superficial' | 'estandar' | 'exhaustivo';
+
+export interface Restricciones {
+  no_pivoting: boolean;
+  modo_ctf: boolean;
+  flag_format: string;
+  solo_reportar_criticos: boolean;
+  stealth: boolean;
+}
+
 export interface CampaignStatus {
   estado: 'inactivo' | 'ejecutando' | 'pausado' | 'detenido' | 'finalizado' | 'error';
   target: string | null;
   sesion_id: number;
+  modo: Modo | null;
+  profundidad: Profundidad | null;
+  restricciones: Restricciones | null;
   iteracion_actual: number;
   ruta_reporte: string | null;
   error: string | null;
+}
+
+export interface IniciarCampañaResponse extends CampaignStatus {
+  advertencias: Array<{ campo: string; mensaje: string }>;
+}
+
+// Valores por defecto que el backend aplica si se omiten los campos.
+export const RESTRICCIONES_DEFAULT: Restricciones = {
+  no_pivoting: true,
+  modo_ctf: false,
+  flag_format: 'FLAG{...}',
+  solo_reportar_criticos: false,
+  stealth: false,
+};
+
+export interface IniciarCampañaParams {
+  target: string;
+  sesion_id?: number;
+  modo?: Modo;
+  profundidad?: Profundidad;
+  restricciones?: Partial<Restricciones>;
 }
 
 export interface ReporteResumen {
@@ -31,13 +70,9 @@ export interface ReporteCompleto extends ReporteResumen {
 // ============================================================================
 
 export async function iniciarCampaña(
-  target: string,
-  sesion_id?: number
-): Promise<CampaignStatus> {
-  const { data } = await apiClient.post('/campaign/start', {
-    target,
-    ...(sesion_id !== undefined && { sesion_id }),
-  });
+  params: IniciarCampañaParams
+): Promise<IniciarCampañaResponse> {
+  const { data } = await apiClient.post('/campaign/start', params);
   return data;
 }
 
