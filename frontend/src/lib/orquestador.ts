@@ -66,6 +66,25 @@ export interface ReporteCompleto extends ReporteResumen {
 }
 
 // ============================================================================
+// TIMELINE DE EVENTOS EN VIVO
+// ============================================================================
+
+export interface CampaignEvent {
+  id: number;
+  timestamp: string; // ISO 8601 UTC
+  tipo: string; // ver catálogo en Docs/handoff_frontend_logs.md §4
+  agente: 'commander' | 'explorer' | 'judge' | 'selector' | 'summarizer' | string;
+  fase: string | null;
+  iteracion: number | null;
+  datos: Record<string, unknown>;
+}
+
+export interface LogsResponse {
+  eventos: CampaignEvent[];
+  total: number;
+}
+
+// ============================================================================
 // FUNCIONES DE CAMPAÑA
 // ============================================================================
 
@@ -107,5 +126,16 @@ export async function listarReportes(): Promise<ReporteResumen[]> {
 
 export async function obtenerReporte(id: string): Promise<ReporteCompleto> {
   const { data } = await apiClient.get(`/campaign/reports/${id}`);
+  return data;
+}
+
+// ============================================================================
+// FUNCIONES DE TIMELINE
+// ============================================================================
+
+// Devuelve solo los eventos cuyo `id` es >= `desde`. Usa `total` de la respuesta
+// como el próximo `desde` (cursor incremental).
+export async function obtenerLogs(desde = 0): Promise<LogsResponse> {
+  const { data } = await apiClient.get('/campaign/logs', { params: { desde } });
   return data;
 }
