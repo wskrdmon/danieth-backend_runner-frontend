@@ -165,3 +165,19 @@ services:
     image: backend_runner-osquery
     container_name: runner-tool-osquery-builder
     entrypoint: ["echo", "imagen lista"]
+
+  tool_trivy:
+    build:
+      context: tools/trivy
+      dockerfile: Dockerfile
+    image: backend_runner-trivy
+    container_name: runner-tool-trivy-builder
+    entrypoint: ["echo", "imagen lista"]
+
+  tool_wapiti:
+    build:
+      context: tools/wapiti
+      dockerfile: Dockerfile
+    image: backend_runner-wapiti
+    container_name: runner-tool-wapiti-builder
+    entrypoint: ["echo", "imagen lista"]
