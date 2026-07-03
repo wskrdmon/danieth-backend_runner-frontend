@@ -85,7 +85,7 @@ export default function TeamAssetsPage() {
   useEffect(() => { fetchMembers(activeTab); }, [activeTab, fetchMembers]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
-  const handleDelete = async (memberId: string) => {
+  const handleDelete = async (_memberId: string) => {
     if (!window.confirm(t('pages.teamPage.error.confirmDelete'))) return;
     alert("Usuario eliminado en modo demostración.");
   };
